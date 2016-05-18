@@ -15,7 +15,7 @@
 &emsp;&emsp;3.左右滑快进，退；
 &emsp;&emsp;4.锁屏与解锁；
 &emsp;&emsp;5.像素切换，应对高、超清；
-&emsp;&emsp;6.网咯状态广播监听及处理；
+&emsp;&emsp;6.网络状态广播监听及处理；
 &emsp;&emsp;.....
 </pre>
 
