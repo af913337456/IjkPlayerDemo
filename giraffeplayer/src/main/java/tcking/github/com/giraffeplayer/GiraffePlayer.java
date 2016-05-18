@@ -28,6 +28,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -36,9 +37,8 @@ import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 
 /**
- *  Created by tcking on 15/10/27.
- *  Expended by LinGuanHong on 16/5/17
- *  在原基础上加多了播放中状态切换bug修复、断网广播处理、锁屏等
+ * Created by tcking on 15/10/27.
+ * enpended by LinGuanHong on 16/5/17
  *
  */
 
@@ -75,10 +75,10 @@ public class GiraffePlayer {
     private static final int MESSAGE_RESTART_PLAY = 5;
     private static final int MESSAGE_LOCK_HIDE = 6;
     private final Activity activity;
-    private final IjkVideoView videoView;
-    private final SeekBar seekBar;
-    private final AudioManager audioManager;
-    private final int mMaxVolume;
+    private IjkVideoView videoView;
+    private SeekBar seekBar;
+    private AudioManager audioManager;
+    private int mMaxVolume;
     private String url;
     private Query $;
     private int STATUS_ERROR=-1;
@@ -91,7 +91,7 @@ public class GiraffePlayer {
     private int status=STATUS_IDLE;
     private boolean isLive = true;//是否为直播
     private OrientationEventListener orientationEventListener;
-    final private int initHeight;
+    private int initHeight;
     private int defaultTimeout=3000;
     private int screenWidthPixels;
 
@@ -314,18 +314,44 @@ public class GiraffePlayer {
         }
     };
 
-    //private int onNetErrPos = -1;
+    /** 下面在改变 view 的容器的时候，记得对应修改 layoutParam */
     private View view;
+    private LinearLayout containerView;
+    private RelativeLayout fullContainerView;
     public GiraffePlayer(
             final Activity activity,
-            LinearLayout containerView,
+            final LinearLayout containerView,
             final String url
     ) {
         IjkMediaPlayer.loadLibrariesOnce(null);
         IjkMediaPlayer.native_profileBegin("libijkplayer.so");
         this.activity=activity;
+        this.containerView = containerView;
         this.view = LayoutInflater.from(activity).inflate(R.layout.giraffe_player,containerView,false);
         containerView.addView(view);
+        commonInit(url);
+    }
+
+    public GiraffePlayer(
+            final Activity activity,
+            final LinearLayout containerView,
+            final RelativeLayout fullContainerView,
+            final String url
+    ) {
+        IjkMediaPlayer.loadLibrariesOnce(null);
+        IjkMediaPlayer.native_profileBegin("libijkplayer.so");
+        this.activity=activity;
+        this.containerView = containerView;
+        this.fullContainerView = fullContainerView;
+        this.view = LayoutInflater.from(activity).inflate(R.layout.giraffe_player,containerView,false);
+        containerView.addView(view);
+        commonInit(url);
+    }
+
+    private void commonInit(final String url){
+        /** 初始化高度 */
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,250*3);
+        view.setLayoutParams(lp);
 
         view.findViewById(R.id.startPlay).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -496,7 +522,7 @@ public class GiraffePlayer {
         $.id(R.id.app_video_loading).gone();
         $.id(R.id.app_video_fullscreen).invisible();
         $.id(R.id.app_video_status).gone();
-        showBottomControl(false,delayLock);
+        showBottomControl(false, delayLock);
     }
 
     public void onPause() {
@@ -526,16 +552,41 @@ public class GiraffePlayer {
         }
     }
 
-    public void onConfigurationChanged(final Configuration newConfig) {
+    /** second 是否采用第二种全屏方式 */
+    public void onConfigurationChanged(final Configuration newConfig,boolean isSecondFullWay) {
         portrait = newConfig.orientation == Configuration.ORIENTATION_PORTRAIT;
-        doOnConfigurationChanged(portrait);
+        if(isSecondFullWay){
+            if(fullContainerView==null){
+                Toast.makeText(activity,"第二种的全屏方式必须传入 fullContainerView ！",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if(portrait){ /** 竖屏 */
+                fullContainerView.removeView(view);
+                containerView.addView(view);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,250*3);
+                view.setLayoutParams(lp);
+            }else{
+                containerView.removeView(view);
+                fullContainerView.addView(view);
+                RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
+                        RelativeLayout.LayoutParams.MATCH_PARENT,
+                        RelativeLayout.LayoutParams.MATCH_PARENT);
+                view.setLayoutParams(lp);
+            }
+            /** 取反 */
+            setFullScreen(!portrait);
+        }else {
+            doOnConfigurationChanged(portrait);
+        }
     }
+
 
     private void doOnConfigurationChanged(final boolean portrait) {
         if (videoView != null && !fullScreenOnly) {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
+                    Log.d("zzzzz","portrait "+portrait);
                     tryFullScreen(!portrait);
                     if (portrait) {
                         $.id(R.id.app_video_box).height(initHeight, false);
@@ -564,19 +615,17 @@ public class GiraffePlayer {
     }
 
     private void setFullScreen(boolean fullScreen) {
-        if (activity != null) {
-            WindowManager.LayoutParams attrs = activity.getWindow().getAttributes();
-            if (fullScreen) {
-                attrs.flags |= WindowManager.LayoutParams.FLAG_FULLSCREEN;
-                activity.getWindow().setAttributes(attrs);
-                activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-            } else {
-                attrs.flags &= (~WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                activity.getWindow().setAttributes(attrs);
-                activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-            }
+        WindowManager.LayoutParams attrs = activity.getWindow().getAttributes();
+        if (fullScreen) {
+            attrs.flags |= WindowManager.LayoutParams.FLAG_FULLSCREEN;
+            activity.getWindow().setAttributes(attrs);
+            Log.d("zzzzz","activity.getWindow().setAttributes(attrs);");
+            activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        } else {
+            attrs.flags &= (~WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            activity.getWindow().setAttributes(attrs);
+            activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         }
-
     }
 
     public void onDestroy() {
@@ -1054,6 +1103,5 @@ public class GiraffePlayer {
                 }
             }
         }
-
     }
 }
