@@ -22,6 +22,7 @@
 ###怎样使用(How to use)
 
 >使用方法</br>
+
 ```java
 /** 动态添加，方便多路播放 */
 GiraffePlayer player = new GiraffePlayer
