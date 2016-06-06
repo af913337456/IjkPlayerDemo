@@ -59,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
         super.onConfigurationChanged(newConfig);
         if (player != null) {
             /** 让用户自己手动切换就注释下面的 */
-           player.onConfigurationChanged(newConfig);
+           player.onConfigurationChanged(newConfig,true);
         }
     }
 }
