@@ -1,6 +1,6 @@
 # IjkPlayerDemo
 
-###功能列表(Function list)
+### 功能列表(Function list)
 <pre>
 &emsp;&emsp;1.支持多种视频播放格式，解码快；
 &emsp;&emsp;2.支持多路播放；
@@ -8,7 +8,7 @@
 &emsp;&emsp;4.颜值高，还能选择画布比例。
 </pre>
         
-在上面的基础上已添加如下`功能拓展`:
+### 在上面的基础上已添加如下`功能拓展`:
 <pre>
 &emsp;&emsp;1.全屏；
 &emsp;&emsp;2.上下滑调亮度、声音；
@@ -19,7 +19,7 @@
 &emsp;&emsp;.....
 </pre>
 
-###怎样使用(How to use)
+### 怎样使用(How to use)
 
 >使用方法</br>
 
